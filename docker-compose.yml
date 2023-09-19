@@ -1,0 +1,52 @@
+version: '3.9'
+
+networks:
+  service-network:
+    external: true
+
+services:
+  base-template-service:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    dns:
+      - 8.8.8.8
+      - 4.4.4.4
+    logging:
+      options:
+        max-size: "50m"
+        max-file: "10"
+    ports:
+      - "3000:3000"
+    # expose:
+    #   - "3000"
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    environment:
+      NODE_ENV: production
+      PORT: 3000
+      DB_CONNECTION_STRING: mongodb://adminUser:lXH916$$7y@host.docker.internal:27017/my-db
+      ALLOWED_DOMAINS: 'localhost;example.com;'
+      THROTTLE_TTL: 3600
+      THROTTLE_LIMIT: 1000
+      VERSION: '0.0.1'
+    healthcheck:
+      test: ["CMD", "curl", "--fail", "http://127.0.0.1:3000/api/health", "||", "exit", "1"]
+      interval: 30s
+      timeout: 10s
+      start_period: 5s
+      retries: 3
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.back-end-service.rule=Host(`mydomain.com`)"
+      - "traefik.http.routers.back-end-service.entrypoints=websecure"
+      - "traefik.http.routers.back-end-service.tls.certresolver=myresolver"
+      - "traefik.http.middlewares.redirect-to-https.redirectscheme.scheme=https"
+      - "traefik.http.middlewares.test-compress.compress=true"
+      - "traefik.http.routers.redirs.rule=hostregexp(`{host:.+}`)"
+      - "traefik.http.routers.redirs.entrypoints=web"
+      - "traefik.http.routers.redirs.middlewares=redirect-to-https"
+    restart: always
+    dns_search: ''
+    networks:
+      - service-network
